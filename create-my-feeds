@@ -14,11 +14,12 @@
 use Data::Dumper;
 use File::Spec;
 use Getopt::Long;
+use JSON::Any;
 use LWP::UserAgent;
 use strict;
 use warnings;
 
-our $VERSION = '0.1';
+our $VERSION = '0.2';
 
 $Data::Dumper::Indent = 1;
 
@@ -37,7 +38,10 @@ $ua->credentials('api.feedbin.com:443', 'Application', $feedbin_username, $feedb
 
 my $response = $ua->get($feedbin_apiurl);
 if ($response->is_success()) {
-    print Dumper $response->decoded_content();
+    my $feed_object = JSON::Any->jsonToObj($response->decoded_content());
+    for my $feed (@{$feed_object}) {
+        print $feed->{feed_url}, "\n";
+    }
 } else {
-    print $response->status_line(), "\n";
+    print "Something went wrong: " . $response->status_line(), "\n";
 }
