@@ -1,0 +1,43 @@
+#!/usr/bin/env perl
+# Copyright 2018 Kevin Spencer <kevin@kevinspencer.org>
+#
+# Permission to use, copy, modify, distribute, and sell this software and its
+# documentation for any purpose is hereby granted without fee, provided that
+# the above copyright notice appear in all copies and that both that
+# copyright notice and this permission notice appear in supporting
+# documentation. No representations are made about the suitability of this
+# software for any purpose. It is provided "as is" without express or
+# implied warranty.
+#
+################################################################################
+
+use Data::Dumper;
+use File::Spec;
+use Getopt::Long;
+use LWP::UserAgent;
+use strict;
+use warnings;
+
+our $VERSION = '0.1';
+
+$Data::Dumper::Indent = 1;
+
+my ($feedbin_username, $feedbin_password);
+GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password);
+
+if ((! $feedbin_username) || (! $feedbin_password)) {
+    die "Need credentials to auth.  Usage: ./create-my-feeds --user foo --pass foo\n";
+}
+
+my $feedbin_apiurl = 'https://api.feedbin.com/v2/subscriptions.json';
+
+my $ua = LWP::UserAgent->new();
+$ua->agent("create-my-feeds/$VERSION");
+$ua->credentials('api.feedbin.com:443', 'Application', $feedbin_username, $feedbin_password);
+
+my $response = $ua->get($feedbin_apiurl);
+if ($response->is_success()) {
+    print Dumper $response->decoded_content();
+} else {
+    print $response->status_line(), "\n";
+}
