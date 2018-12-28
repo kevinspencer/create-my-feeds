@@ -13,18 +13,18 @@
 
 use Cwd;
 use Data::Dumper;
-use File::Spec;
 use Getopt::Long;
 use JSON::Any;
 use LWP::UserAgent;
+use open qw(:std :utf8);
 use strict;
 use warnings;
 
-our $VERSION = '0.3';
+our $VERSION = '0.4';
 
 $Data::Dumper::Indent = 1;
 
-my ($feedbin_username, $feedbin_password, $feeds_filepath);
+my ($feedbin_username, $feedbin_password, $feeds_filepath, $feeds_htmlpath);
 GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password, "outfile=s" => \$feeds_filepath);
 
 if ((! $feedbin_username) || (! $feedbin_password)) {
@@ -32,21 +32,69 @@ if ((! $feedbin_username) || (! $feedbin_password)) {
 }
 
 $feeds_filepath ||= cwd() . '/feeds.txt';
+($feeds_htmlpath = $feeds_filepath) =~ s/\.txt/\.html/;
 
 my $feedbin_apiurl = 'https://api.feedbin.com/v2/subscriptions.json';
 
-my $ua = LWP::UserAgent->new();
-$ua->agent("create-my-feeds/$VERSION");
-$ua->credentials('api.feedbin.com:443', 'Application', $feedbin_username, $feedbin_password);
+main();
 
-my $response = $ua->get($feedbin_apiurl);
-if ($response->is_success()) {
+sub main {
+    my $ua = LWP::UserAgent->new();
+    $ua->agent("create-my-feeds/$VERSION");
+    $ua->credentials('api.feedbin.com:443', 'Application', $feedbin_username, $feedbin_password);
+
+    my $response = $ua->get($feedbin_apiurl);
+    if ($response->is_success()) {
+        my $feed_object = JSON::Any->jsonToObj($response->decoded_content());
+        create_feeds_txt($feed_object);
+        create_feeds_html($feed_object);
+    } else {
+        print "Something went wrong: " . $response->status_line(), "\n";
+    }
+}
+
+sub create_feeds_txt {
+    my $feed_object = shift;
+
     open(my $fh, '>', $feeds_filepath) || die "Could not create $feeds_filepath - $!\n";
-    my $feed_object = JSON::Any->jsonToObj($response->decoded_content());
     for my $feed (@{$feed_object}) {
         print $fh $feed->{feed_url}, "\n";
     }
     close($fh);
-} else {
-    print "Something went wrong: " . $response->status_line(), "\n";
+}
+
+sub create_feeds_html {
+    my $feed_object = shift;
+
+    # to make the output a little nicer, sort alphabetically by feed name...
+    my %feed_name_mapping;
+    for my $feed (@{$feed_object}) {
+        $feed_name_mapping{$feed->{title}}{feed_url} = $feed->{feed_url};
+        $feed_name_mapping{$feed->{title}}{site_url} = $feed->{site_url};
+    }
+    
+    open(my $fh, '>', $feeds_htmlpath) || die "Could not create $feeds_htmlpath - $!\n";
+    
+    print $fh <<EOHTML;
+<html>
+ <head>
+  <title>my exported feeds</title>
+ </head>
+ <body>
+  <h1>my exported feeds</h1>
+  <ul>
+EOHTML
+
+    for my $title (sort keys(%feed_name_mapping)) {
+        my $li_line = "   <li><a href=\"$feed_name_mapping{$title}{site_url}\">$title</a> | <a href=\"$feed_name_mapping{$title}{feed_url}\">xml</a></li>";
+        print $fh $li_line, "\n";
+    }
+
+    print $fh <<EOHTML;
+  </ul>
+ </body>
+</html>
+EOHTML
+
+    close($fh);
 }
