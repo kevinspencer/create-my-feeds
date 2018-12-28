@@ -14,13 +14,14 @@
 use Cwd;
 use Data::Dumper;
 use Getopt::Long;
+use HTML::Entities;
 use JSON::Any;
 use LWP::UserAgent;
 use open qw(:std :utf8);
 use strict;
 use warnings;
 
-our $VERSION = '0.4';
+our $VERSION = '0.5';
 
 $Data::Dumper::Indent = 1;
 
@@ -86,7 +87,8 @@ sub create_feeds_html {
 EOHTML
 
     for my $title (sort keys(%feed_name_mapping)) {
-        my $li_line = "   <li><a href=\"$feed_name_mapping{$title}{site_url}\">$title</a> | <a href=\"$feed_name_mapping{$title}{feed_url}\">xml</a></li>";
+        my $encoded_title = encode_entities($title);
+        my $li_line = "   <li><a href=\"$feed_name_mapping{$title}{site_url}\">$encoded_title</a> | <a href=\"$feed_name_mapping{$title}{feed_url}\">xml</a></li>";
         print $fh $li_line, "\n";
     }
 
