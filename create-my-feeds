@@ -11,6 +11,7 @@
 #
 ################################################################################
 
+use Cwd;
 use Data::Dumper;
 use File::Spec;
 use Getopt::Long;
@@ -19,16 +20,18 @@ use LWP::UserAgent;
 use strict;
 use warnings;
 
-our $VERSION = '0.2';
+our $VERSION = '0.3';
 
 $Data::Dumper::Indent = 1;
 
-my ($feedbin_username, $feedbin_password);
-GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password);
+my ($feedbin_username, $feedbin_password, $feeds_filepath);
+GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password, "outfile=s" => \$feeds_filepath);
 
 if ((! $feedbin_username) || (! $feedbin_password)) {
     die "Need credentials to auth.  Usage: ./create-my-feeds --user foo --pass foo\n";
 }
+
+$feeds_filepath ||= cwd() . '/feeds.txt';
 
 my $feedbin_apiurl = 'https://api.feedbin.com/v2/subscriptions.json';
 
@@ -38,10 +41,12 @@ $ua->credentials('api.feedbin.com:443', 'Application', $feedbin_username, $feedb
 
 my $response = $ua->get($feedbin_apiurl);
 if ($response->is_success()) {
+    open(my $fh, '>', $feeds_filepath) || die "Could not create $feeds_filepath - $!\n";
     my $feed_object = JSON::Any->jsonToObj($response->decoded_content());
     for my $feed (@{$feed_object}) {
-        print $feed->{feed_url}, "\n";
+        print $fh $feed->{feed_url}, "\n";
     }
+    close($fh);
 } else {
     print "Something went wrong: " . $response->status_line(), "\n";
 }
