@@ -21,12 +21,17 @@ use open qw(:std :utf8);
 use strict;
 use warnings;
 
-our $VERSION = '0.6';
+our $VERSION = '0.7';
 
 $Data::Dumper::Indent = 1;
 
 my ($feedbin_username, $feedbin_password, $feeds_filepath, $feeds_htmlpath, $to_console);
-GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password, "outfile=s" => \$feeds_filepath, "toconsole" => \$to_console);
+GetOptions(
+    "user=s"    => \$feedbin_username, 
+    "pass=s"    => \$feedbin_password, 
+    "outfile=s" => \$feeds_filepath, 
+    "toconsole" => \$to_console
+);
 
 if ((! $feedbin_username) || (! $feedbin_password)) {
     die "Need credentials to auth.  Usage: ./create-my-feeds --user foo --pass foo\n";
@@ -35,21 +40,22 @@ if ((! $feedbin_username) || (! $feedbin_password)) {
 $feeds_filepath ||= cwd() . '/feeds.txt';
 ($feeds_htmlpath = $feeds_filepath) =~ s/\.txt/\.html/;
 
-my $feedbin_apiurl = 'https://api.feedbin.com/v2/subscriptions.json';
+my $feedbin_apiurl    = 'https://api.feedbin.com/v2/subscriptions.json';
+my $feedbin_authrealm = 'api.feedbin.com:443';
 
 main();
 
 sub main {
     my $ua = LWP::UserAgent->new();
     $ua->agent("create-my-feeds/$VERSION");
-    $ua->credentials('api.feedbin.com:443', 'Application', $feedbin_username, $feedbin_password);
+    $ua->credentials($feedbin_authrealm, 'Application', $feedbin_username, $feedbin_password);
 
     my $response = $ua->get($feedbin_apiurl);
     if ($response->is_success()) {
         my $feed_object = JSON::Any->jsonToObj($response->decoded_content());
         if ($to_console) {
             for my $feed (@{$feed_object}) {
-                print $feed->{feed_url}, "\n";
+                print "$feed->{title} - $feed->{feed_url}\n";
             }
         } else {
             create_feeds_txt($feed_object);
