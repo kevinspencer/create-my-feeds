@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# Copyright 2018 Kevin Spencer <kevin@kevinspencer.org>
+# Copyright 2018-2019 Kevin Spencer <kevin@kevinspencer.org>
 #
 # Permission to use, copy, modify, distribute, and sell this software and its
 # documentation for any purpose is hereby granted without fee, provided that
@@ -21,12 +21,12 @@ use open qw(:std :utf8);
 use strict;
 use warnings;
 
-our $VERSION = '0.5';
+our $VERSION = '0.6';
 
 $Data::Dumper::Indent = 1;
 
-my ($feedbin_username, $feedbin_password, $feeds_filepath, $feeds_htmlpath);
-GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password, "outfile=s" => \$feeds_filepath);
+my ($feedbin_username, $feedbin_password, $feeds_filepath, $feeds_htmlpath, $to_console);
+GetOptions("user=s" => \$feedbin_username, "pass=s" => \$feedbin_password, "outfile=s" => \$feeds_filepath, "toconsole" => \$to_console);
 
 if ((! $feedbin_username) || (! $feedbin_password)) {
     die "Need credentials to auth.  Usage: ./create-my-feeds --user foo --pass foo\n";
@@ -47,8 +47,14 @@ sub main {
     my $response = $ua->get($feedbin_apiurl);
     if ($response->is_success()) {
         my $feed_object = JSON::Any->jsonToObj($response->decoded_content());
-        create_feeds_txt($feed_object);
-        create_feeds_html($feed_object);
+        if ($to_console) {
+            for my $feed (@{$feed_object}) {
+                print $feed->{feed_url}, "\n";
+            }
+        } else {
+            create_feeds_txt($feed_object);
+            create_feeds_html($feed_object);
+        }
     } else {
         print "Something went wrong: " . $response->status_line(), "\n";
     }
