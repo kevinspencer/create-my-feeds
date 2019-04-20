@@ -1,4 +1,4 @@
-# create-my-feeds
+# `create-my-feeds`
 
 Andre Torrez wrote a post about creating a feeds.txt via Feedbin's API.
 
